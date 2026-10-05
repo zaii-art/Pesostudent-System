@@ -162,6 +162,7 @@ nav{padding-top:6px}nav button{display:flex;flex-direction:column;align-items:ce
 @keyframes coin{50%{transform:scaleX(.04)}}
 @keyframes up{from{opacity:0;transform:translateY(14px)}}
 @keyframes ldf{from{width:0}to{width:100%}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}.chips button.s.on{background:var(--ac);color:var(--on);border-color:transparent}
 </style></head><body>
 <div id="v"></div><nav id="nav"></nav><div id="intro"></div>
 <script>
@@ -287,11 +288,11 @@ cls(){
 ${D.map(d=>`<div class="c"><b>${d}</b>${S.cls.filter(x=>x.day==d).sort((a,b)=>a.time.localeCompare(b.time)).map(x=>`<div class="r"><span><b>${ft(x.time)}${x.end?' – '+ft(x.end):''}</b> ${E(x.sub)} ${x.kind?`<span class="t">${x.kind}</span>`:''} <span class="sm mu">${E(x.room||'')}</span></span><button class="s" onclick="S.cls=S.cls.filter(y=>y.id!=${x.id});save();R()">✕</button></div>`).join('')||'<div class="mu">No classes.</div>'}</div>`).join('')}`},
 tasks(){
  const l=S.tasks.slice().sort((a,b)=>(a.done-b.done)||key(a)-key(b));
- const subs=[...new Set(S.cls.map(x=>x.sub))],ev=nt=='Quiz'||nt=='Test',dv=k=>E(dr[k]||'');
+ const subs=subjects(),ev=nt=='Quiz'||nt=='Test',dv=k=>E(dr[k]||'');
  return `<h1>Tasks</h1>${flash?`<div class="al i fl">${flash}</div>`:''}${alerts(calc())}<div class="c"><b>Add a task</b>
 <div class="g4">${['Quiz','Test','Assignment','Project'].map(x=>`<button class="${x==nt?'':'s'}" onclick="pick('${x}')">${x}</button>`).join('')}</div>
 <div class="sm mu">${ev?'Pick the date, then when it starts and ends.':'Pick when you start and when it is due.'}</div>
-<input id="tn" placeholder="Title" value="${dv('tn')}"><input id="tc" list="sl" placeholder="Class" value="${dv('tc')}"><datalist id="sl">${subs.map(s=>`<option value="${E(s)}">`).join('')}</datalist>
+<input id="tn" placeholder="Title" value="${dv('tn')}"><label>Class</label>${subs.length?`<div class="chips">${subs.map((x,i)=>`<button class="s${dr.tc==x?' on':''}" onclick="pickSub(${i})">${E(x)}</button>`).join('')}</div>`:'<div class="sm mu">No subjects yet. Add classes in the Classes tab first.</div>'}
 ${ev?`<label>Date</label><input id="tsd" type="date" value="${dv('tsd')}"><div class="g"><div><label>Starts at</label><input id="tst" type="time" value="${dv('tst')}"></div><div><label>Ends at</label><input id="tet" type="time" value="${dv('tet')}"></div></div>`:`<div class="g"><div><label>Start date</label><input id="tsd" type="date" value="${dv('tsd')}"></div><div><label>Start time</label><input id="tst" type="time" value="${dv('tst')}"></div></div><div class="g"><div><label>Due date</label><input id="ted" type="date" value="${dv('ted')}"></div><div><label>Due time</label><input id="tet" type="time" value="${dv('tet')}"></div></div>`}
 <div class="g"><div><label>Priority</label><select id="tp">${['Auto','High','Medium','Low'].map(x=>`<option${dr.tp==x?' selected':''}>${x}</option>`).join('')}</select></div><div><label>Budget (optional)</label><input id="tb" type="number" min="0" inputmode="decimal" value="${dv('tb')}"></div></div>
 <button onclick="addTask()">Add task</button></div>
@@ -309,19 +310,21 @@ function sv(g){const a=N('sa');if(a<=0){flash=NEG('sa')?'Amount can\'t be negati
 function stashC(){['cs','cr','cst','cen'].forEach(i=>{const e=document.getElementById(i);if(e)dr[i]=e.value})}
 function pickKind(k){stashC();ck=k;R()}
 function togDay(d){stashC();sdays=sdays.includes(d)?sdays.filter(x=>x!=d):sdays.concat(d);R()}
-function addCls(){const bad=m=>{stashC();flash=m;R();scrollTo(0,0)},sub=V('cs'),a=V('cst'),b=V('cen');
+function addCls(){const bad=m=>{stashC();flash=m;R();scrollTo(0,0)},sub=subjects().find(x=>x.toLowerCase()==V('cs').toLowerCase())||V('cs'),a=V('cst'),b=V('cen');
  if(!sub)return bad('Enter the subject.');if(!sdays.length)return bad('Pick at least one day.');if(!a||!b)return bad('Set the start and end time.');if(b<=a)return bad('The end time must be after the start.');
  sdays.forEach((d,i)=>S.cls.push({id:uid()+i,day:d,time:a,end:b,sub:sub,room:V('cr'),kind:ck}));
  const m='Added '+sub+' ('+ck+') on '+sdays.join(', ')+'.';dr.cs=dr.cr=dr.cst=dr.cen='';sdays=[];save();flash=m;R();scrollTo(0,0)}
 function stash(){['tn','tc','tsd','tst','ted','tet','tp','tb'].forEach(i=>{const e=document.getElementById(i);if(e)dr[i]=e.value})}
+function subjects(){const m=new Map();S.cls.forEach(x=>{const k=x.sub.trim().toLowerCase();if(!m.has(k))m.set(k,x.sub.trim())});return[...m.values()].sort((a,b)=>a.localeCompare(b))}
+function pickSub(i){stash();const l=subjects();dr.tc=dr.tc==l[i]?'':l[i];R()}
 function pick(x){stash();nt=x;R()}
 function addTask(){const ev=nt=='Quiz'||nt=='Test',tt=V('tn'),bad=m=>{stash();flash=m;R();scrollTo(0,0)};
  let sd=V('tsd'),ed=ev?sd:V('ted');const s0=V('tst'),et=V('tet');
- if(!tt)return bad('Enter a title.');
+ if(!tt)return bad('Enter a title.');if(S.cls.length&&!dr.tc)return bad('Choose a subject.');
  if(ev&&!sd)return bad('Pick the date.');
  if(!ev){if(!ed)return bad('Pick the due date.');if(!sd)sd=tod}
  if(new Date(ed+'T'+(et||'23:59'))<new Date(sd+'T'+(s0||'00:00')))return bad('The end must be after the start.');
- S.tasks.push({id:uid(),title:tt,cls:V('tc'),type:nt,sd:sd,st:s0,ed:ed,et:et,due:ed,pri:V('tp')||'Auto',bud:N('tb'),done:false});
+ S.tasks.push({id:uid(),title:tt,cls:dr.tc||'',type:nt,sd:sd,st:s0,ed:ed,et:et,due:ed,pri:V('tp')||'Auto',bud:N('tb'),done:false});
  dr={};save();flash='Added '+tt+'.';R();scrollTo(0,0)}
 function tg(i){const t=S.tasks.find(x=>x.id==i);t.done=!t.done;t.dts=t.done?Date.now():0;save();R()}
 function stashF(){['fn','fa','fd'].forEach(i=>{const e=document.getElementById(i);if(e)dr[i]=e.value})}
