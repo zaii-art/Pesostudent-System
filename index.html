@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0a7f5f"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Pesostudent"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png"><meta name="theme-color" content="#0a7f5f"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Pesostudent"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Pesostudent</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;800&family=Figtree:wght@400;600;700;800&display=swap">
 <style>
@@ -238,7 +238,7 @@ today(){
 <div class="c"><b>Classes today</b>${cl.map(x=>`<div class="r"><span><b>${ft(x.time)}${x.end?' – '+ft(x.end):''}</b> ${E(x.sub)} ${x.kind?`<span class="t">${x.kind}</span>`:''}${x.end&&nm>=x.time&&nm<x.end?' <span class="t dn">Now</span>':''}</span><span class="mu">${E(x.room||'')}</span></div>`).join('')||'<div class="mu">No classes listed for today.</div>'}</div>
 <div class="c"><b>Due in the next 3 days</b>${tk.map(t=>taskRow(t,2)).join('')||'<div class="mu">Nothing due soon.</div>'}</div>
 <div class="c"><b>Fund payments due this week</b>${fd.map(f=>`<div class="r"><span>${E(f.name)}</span><span>${P(rem(f))}, ${cd(f.due)} <button class="s" onclick="mvf(${f.id},1)">+1d</button> <button class="s" onclick="mvf(${f.id},7)">+1w</button></span></div>`).join('')||'<div class="mu">None.</div>'}</div>
-${scoreCard()}${recapCard()}<div class="c"><b>Weekly summary</b><div class="tiles"><div class="tl" style="--k:var(--p4)"><i>💸</i><b>${P(c.spent)}</b><span>Spent</span></div><div class="tl" style="--k:var(--p5)"><i>🧘</i><b>${ns(c)}</b><span>No-spend days</span></div><div class="tl" style="--k:var(--ok)"><i>✅</i><b>${dn}</b><span>Tasks done</span></div><div class="tl" style="--k:var(--er)"><i>⏳</i><b>${od}</b><span>Tasks overdue</span></div></div></div><div style="text-align:center;margin:14px 0"><button class="s" onclick="replay()">Replay intro</button></div>`},
+${scoreCard()}${recapCard()}<div class="c"><b>Weekly summary</b><div class="tiles"><div class="tl" style="--k:var(--p4)"><i>💸</i><b>${P(c.spent)}</b><span>Spent</span></div><div class="tl" style="--k:var(--p5)"><i>🧘</i><b>${ns(c)}</b><span>No-spend days</span></div><div class="tl" style="--k:var(--ok)"><i>✅</i><b>${dn}</b><span>Tasks done</span></div><div class="tl" style="--k:var(--er)"><i>⏳</i><b>${od}</b><span>Tasks overdue</span></div></div></div>${remCard()}<div style="text-align:center;margin:14px 0"><button class="s" onclick="replay()">Replay intro</button></div>`},
 money(){
  const c=calc(),top=Object.entries(c.bc).sort((a,b)=>b[1]-a[1])[0];
  const p=c.sp>0?c.spent/c.sp*100:0;
@@ -366,5 +366,24 @@ function rename(){const n=prompt('Change your name',S.name||'');if(n&&n.trim()){
 function meCard(c,od){const n=S.name?E(S.name):'',nm=S.name||'Student',m=!S.budget?'Set your weekly budget to get started.':c.left<0?`Careful${n?' '+n:''}, you are over today's allowance.`:od?`${n?n+', you':'You'} have overdue items. Let's clear them.`:`Nice${n?', '+n:''}! You are on track today.`;
  return `<div class="me" onclick="rename()" role="button" tabindex="0"><div class="av">${E(Array.from(nm)[0].toUpperCase())}</div><div class="mt"><div class="sm mu">${greet()}</div><div class="nm">${E(nm)} <span class="wv">👋</span></div><div class="sm mu">${m}</div></div><span class="ed">✎</span></div>`}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
-roll();R(1);if(!S.done)showIntro();
+const HN='Notification' in window;
+function remCard(){const p=HN?Notification.permission:'none',on=HN&&p=='granted'&&S.rem;
+ return `<div class="c"><b>Reminders</b>${!HN?'<div class="sm mu">This browser does not support reminders.</div>':p=='denied'?'<div class="sm mu">Notifications are blocked. Allow them for this site in your browser settings, then come back.</div>':on?'<div class="sm mu">Reminders are on. You will get a notification for overdue items, funds due, quizzes starting soon and overspending.</div><div class="g"><button class="s" onclick="testRem()">Send a test</button><button class="s" onclick="offRem()">Turn off</button></div>':'<div class="sm mu">Get a phone notification for overdue tasks, funds due and quizzes starting soon.</div><button onclick="onRem()">Turn on reminders</button>'}<div class="sm mu" style="margin-top:6px">Reminders show while the app is open or when you open it. On iPhone, add it to your Home Screen first.</div></div>`}
+function onRem(){if(!HN)return;Notification.requestPermission().then(q=>{if(q=='granted'){S.rem=1;save();notify('Reminders are on 🔔','We will nudge you about tasks and funds.','on');flash='Reminders turned on.';checkRem()}else flash='Permission was not granted.';R()})}
+function offRem(){S.rem=0;save();R()}
+function testRem(){notify('Pesostudent 🔔','This is how your reminders will look.','test')}
+async function notify(t,b,tag){try{const g=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration(),o={body:b,tag:tag,icon:'icon-192.png',badge:'icon-192.png'};if(g&&g.showNotification)await g.showNotification(t,o);else new Notification(t,o)}catch(e){}}
+function checkRem(){if(!S.rem||!HN||Notification.permission!='granted')return;
+ const day=iso(new Date());if(S.ntd!=day){S.nt={};S.ntd=day}if(!S.nt)S.nt={};
+ const c=calc(),L=[],add=(k,t,b)=>{if(!S.nt[k])L.push([k,t,b])},now=new Date();
+ const od=S.tasks.filter(t=>st(t)=='Overdue');if(od.length)add('od','⏰ '+od.length+' task(s) overdue',od.slice(0,3).map(t=>t.title).join(', '));
+ S.funds.filter(f=>rem(f)>0).forEach(f=>{const d=di(f.due);if(d<0)add('fo'+f.id,'🚨 '+f.name+' is overdue',P(rem(f))+' left to pay.');else if(d<=1)add('fd'+f.id,'🎓 '+f.name+' due '+(d?'tomorrow':'today'),P(rem(f))+' left to pay.')});
+ S.tasks.filter(t=>!t.done&&st(t)!='Overdue').forEach(t=>{if(EV(t)){const m=(startTs(t)-now)/6e4;if(m>0&&m<=60)add('ts'+t.id,'📝 '+t.title+' starts soon','Starts in '+Math.round(m)+' min.')}else{const h=(endTs(t)-now)/36e5;if(h>0&&h<=24)add('td'+t.id,'📝 '+t.title+' is due soon','Due '+rel(endTs(t))+'.')}});
+ if(S.budget&&c.left<0)add('al','💸 Over today\'s allowance','You are over by '+P(-c.left)+'.');
+ const ow=S.funds.filter(f=>rem(f)>0&&di(f.due)<=14).reduce((a,f)=>a+rem(f),0);if(S.budget&&ow>0&&c.safe<ow)add('sf','⚠️ Safe-to-spend is low','Safe-to-spend '+P(c.safe)+' but you owe '+P(ow)+'.');
+ if(!L.length)return;L.forEach(x=>S.nt[x[0]]=1);save();
+ if(L.length>3)notify('Pesostudent: '+L.length+' reminders',L.map(x=>x[1]).join('\n'),'sum');else L.forEach(x=>notify(x[1],x[2],x[0]))}
+if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
+setInterval(checkRem,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkRem()});
+roll();R(1);if(!S.done)showIntro();checkRem();
 </script></body></html>
